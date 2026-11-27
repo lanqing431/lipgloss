@@ -1,0 +1,45 @@
+name: Table data macOS Intel validation
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: read
+  checks: write
+
+jobs:
+  build:
+    runs-on: macos-26-intel
+    env:
+      GO111MODULE: "on"
+      GH_PAT: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+    # Same build steps as charmbracelet/meta@d1d3c82b047b5451e099b326dbfedc46670da27a.
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - run: |
+          git config --global url."https://${{ secrets.PERSONAL_ACCESS_TOKEN }}@github.com/charmbracelet".insteadOf "https://github.com/charmbracelet"
+          git config --global url."https://${{ secrets.PERSONAL_ACCESS_TOKEN }}@github.com/charmcli".insteadOf "https://github.com/charmcli"
+        if: env.GH_PAT != null
+      - name: Install Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: stable
+          cache: true
+      - name: Tidy Go modules
+        run: go mod tidy
+      - name: Check for changes
+        run: git diff --exit-code
+      - name: Build
+        run: go build ./...
+      - name: Test
+        run: go test ./...
+
+  lint:
+    uses: charmbracelet/meta/.github/workflows/lint.yml@d1d3c82b047b5451e099b326dbfedc46670da27a # main snapshot
+    with:
+      golangci_path: .golangci.yml
+      golangci_version: v2.9
+      timeout: 10m
+      os: '["macos-26-intel"]'
